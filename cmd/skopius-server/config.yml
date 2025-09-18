@@ -1,0 +1,8 @@
+services:
+  - name: Google
+    url: "https://www.google.com"
+    interval: 10
+
+  - name: dhamith.me
+    url: "https://dhamith.me"
+    interval: 15
