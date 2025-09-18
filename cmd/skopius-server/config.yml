@@ -1,8 +1,12 @@
 services:
   - name: Google
     url: "https://www.google.com"
-    interval: 10
+    interval: 10s
 
   - name: dhamith.me
     url: "https://dhamith.me"
-    interval: 15
+    interval: 15s
+
+  - name: ShouldFail
+    url: "https://thisurldoesnotexist.dev"
+    interval: 5s

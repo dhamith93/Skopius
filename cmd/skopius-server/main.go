@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/dhamith93/Skopius/internal/config"
-	"github.com/dhamith93/Skopius/internal/monitor"
 	"github.com/dhamith93/Skopius/internal/scheduler"
 )
 
@@ -16,20 +16,23 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	s := scheduler.New()
+	log.Println("Starting Skopius...")
 
-	for _, svc := range cfg.Services {
-		service := svc
-		s.Every(service.Interval, func() {
-			result := monitor.CheckHTTP(service.URL)
-			fmt.Printf("[%s] %s -> %s (%.2fms)\n",
-				time.Now().Format(time.RFC3339),
-				service.Name,
-				result.Status,
-				result.Latency,
-			)
-		})
-	}
+	scheduler := scheduler.NewScheduler(cfg.Services)
+	go scheduler.Start()
 
-	s.Start()
+	go func() {
+		for res := range scheduler.Results {
+			log.Printf("[%s] %s (code=%d, latency=%dms, err=%s)",
+				res.Name, res.Status, res.Code, res.Latency, res.Error)
+			// handle results (store in DB, alerts, etc.)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Println("Shutting down Skopius...")
+	scheduler.Stop()
 }
