@@ -1,27 +1,69 @@
 package monitor
 
 import (
+	"context"
+	"log"
 	"net/http"
 	"time"
 )
 
-type Result struct {
-	Status  string
-	Latency float64
+type Service struct {
+	Name     string        `yaml:"name"`
+	URL      string        `yaml:"url"`
+	Interval time.Duration `yaml:"interval"`
 }
 
-func CheckHTTP(url string) Result {
+type CheckResult struct {
+	Name      string
+	URL       string
+	Status    string // "UP" or "DOWN"
+	Code      int
+	Latency   int64 // ms
+	Timestamp time.Time
+	Error     string
+}
+
+func (s *Service) Check() CheckResult {
+	client := http.Client{Timeout: 5 * time.Second}
 	start := time.Now()
-	resp, err := http.Get(url)
-	latency := time.Since(start).Seconds() * 1000 // ms
+	resp, err := client.Get(s.URL)
+	latency := time.Since(start).Milliseconds()
+
+	result := CheckResult{
+		Name:      s.Name,
+		URL:       s.URL,
+		Latency:   latency,
+		Timestamp: time.Now(),
+	}
 
 	if err != nil {
-		return Result{Status: "DOWN", Latency: latency}
+		result.Status = "DOWN"
+		result.Error = err.Error()
+		return result
 	}
 	defer resp.Body.Close()
 
+	result.Code = resp.StatusCode
 	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
-		return Result{Status: "UP", Latency: latency}
+		result.Status = "UP"
+	} else {
+		result.Status = "DOWN"
 	}
-	return Result{Status: "DOWN", Latency: latency}
+	return result
+}
+
+func (s *Service) Probe(ctx context.Context, results chan<- CheckResult) {
+	ticker := time.NewTicker(s.Interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			res := s.Check()
+			results <- res
+		case <-ctx.Done():
+			log.Printf("Probe stopped for %s\n", s.Name)
+			return
+		}
+	}
 }

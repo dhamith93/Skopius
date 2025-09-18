@@ -3,17 +3,12 @@ package config
 import (
 	"os"
 
+	"github.com/dhamith93/Skopius/internal/monitor"
 	"gopkg.in/yaml.v2"
 )
 
-type Service struct {
-	Name     string `yaml:"name"`
-	URL      string `yaml:"url"`
-	Interval int    `yaml:"interval"` // seconds
-}
-
 type Config struct {
-	Services []Service `yaml:"services"`
+	Services []monitor.Service `yaml:"services"`
 }
 
 func Load(path string) (*Config, error) {
