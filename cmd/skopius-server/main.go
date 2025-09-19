@@ -1,38 +1,51 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/dhamith93/Skopius/internal/api"
 	"github.com/dhamith93/Skopius/internal/config"
-	"github.com/dhamith93/Skopius/internal/scheduler"
 )
 
 func main() {
-	cfg, err := config.Load("config.yml")
-	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+	cfg := config.Load("config.yml")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
 	}
 
-	log.Println("Starting Skopius...")
+	mux := http.NewServeMux()
+	mux.Handle("/api/register", api.RegisterAgentHandler())
+	mux.Handle("/api/config", api.ConfigHandler(cfg.Services))
 
-	scheduler := scheduler.NewScheduler(cfg.Services)
-	go scheduler.Start()
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
+	}
 
 	go func() {
-		for res := range scheduler.Results {
-			log.Printf("[%s] %s (code=%d, latency=%dms, err=%s)",
-				res.Name, res.Status, res.Code, res.Latency, res.Error)
-			// handle results (store in DB, alerts, etc.)
+		log.Println("Starting Skopius server on :" + port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+	log.Println("Shutting down Skopius server...")
 
-	log.Println("Shutting down Skopius...")
-	scheduler.Stop()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("Skopius server forced to shutdown: %v", err)
+	}
+
 }
