@@ -5,18 +5,9 @@ import (
 	"log"
 	"net/http"
 	"time"
-)
 
-type CheckResult struct {
-	AgentID string    `json:"agent_id"`
-	Service string    `json:"service"`
-	URL     string    `json:"url"`
-	Status  string    `json:"status"`
-	Code    int       `json:"code"`
-	Latency int64     `json:"latency"` // ms
-	Error   string    `json:"error"`
-	Time    time.Time `json:"time"`
-}
+	"github.com/dhamith93/Skopius/internal/models"
+)
 
 // GET /api/v1/results
 func ResultHandler() http.HandlerFunc {
@@ -26,13 +17,13 @@ func ResultHandler() http.HandlerFunc {
 			return
 		}
 
-		var res CheckResult
+		var res models.CheckResult
 		if err := json.NewDecoder(r.Body).Decode(&res); err != nil {
 			http.Error(w, "invalid payload", http.StatusBadRequest)
 			return
 		}
 
-		res.Time = time.Now().UTC()
+		res.Received = time.Now().UTC()
 
 		log.Printf("Received result: %+v", res)
 		log.Printf("[%s] %s (code=%d, latency=%dms, err=%s)",

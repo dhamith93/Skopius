@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/dhamith93/Skopius/internal/api"
-	"github.com/dhamith93/Skopius/internal/monitor"
+	"github.com/dhamith93/Skopius/internal/models"
 	"github.com/dhamith93/Skopius/internal/scheduler"
 )
 
@@ -92,18 +92,8 @@ func fetchConfig(creds *AgentCredentials) (*api.ConfigResponse, error) {
 	return &cfg, nil
 }
 
-func sendResult(result monitor.CheckResult, creds AgentCredentials) error {
-	apiResult := api.CheckResult{
-		AgentID: creds.AgentID,
-		Service: result.Name,
-		URL:     result.URL,
-		Status:  result.Status,
-		Code:    result.Code,
-		Latency: result.Latency,
-		Error:   result.Error,
-		Time:    result.Timestamp,
-	}
-	payload, _ := json.Marshal(apiResult)
+func sendResult(result models.CheckResult, creds AgentCredentials) error {
+	payload, _ := json.Marshal(result)
 
 	req, err := http.NewRequest("POST", serverURL+"/api/v1/results", bytes.NewBuffer(payload))
 	if err != nil {

@@ -6,20 +6,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dhamith93/Skopius/internal/models"
 	"github.com/dhamith93/Skopius/internal/monitor"
 )
-
-// type Scheduler struct {
-// 	services []monitor.Service
-// 	ctx      context.Context
-// 	cancel   context.CancelFunc
-// 	Results  chan monitor.CheckResult
-// }
 
 type Scheduler struct {
 	services map[string]monitor.Service
 	cancel   map[string]context.CancelFunc
-	Results  chan monitor.CheckResult
+	Results  chan models.CheckResult
 	mu       sync.Mutex
 	ctx      context.Context
 	cancelFn context.CancelFunc
@@ -31,7 +25,7 @@ func NewScheduler(services []monitor.Service) *Scheduler {
 	s := &Scheduler{
 		services: make(map[string]monitor.Service),
 		cancel:   make(map[string]context.CancelFunc),
-		Results:  make(chan monitor.CheckResult, 100), // buffered channel
+		Results:  make(chan models.CheckResult, 100), // buffered channel
 		mu:       sync.Mutex{},
 		ctx:      ctx,
 		cancelFn: cancel,

@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/dhamith93/Skopius/internal/models"
 )
 
 type Service struct {
@@ -13,24 +15,14 @@ type Service struct {
 	Interval time.Duration `yaml:"interval"`
 }
 
-type CheckResult struct {
-	Name      string
-	URL       string
-	Status    string // "UP" or "DOWN"
-	Code      int
-	Latency   int64 // ms
-	Timestamp time.Time
-	Error     string
-}
-
-func (s *Service) Check() CheckResult {
+func (s *Service) Check() models.CheckResult {
 	client := http.Client{Timeout: 5 * time.Second}
 	start := time.Now()
 	resp, err := client.Get(s.URL)
 	latency := time.Since(start).Milliseconds()
 
-	result := CheckResult{
-		Name:      s.Name,
+	result := models.CheckResult{
+		Service:   s.Name,
 		URL:       s.URL,
 		Latency:   latency,
 		Timestamp: time.Now(),
@@ -52,7 +44,7 @@ func (s *Service) Check() CheckResult {
 	return result
 }
 
-func (s *Service) Probe(ctx context.Context, results chan<- CheckResult) {
+func (s *Service) Probe(ctx context.Context, results chan<- models.CheckResult) {
 	ticker := time.NewTicker(s.Interval)
 	defer ticker.Stop()
 
