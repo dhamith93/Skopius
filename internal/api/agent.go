@@ -34,7 +34,7 @@ type ConfigResponse struct {
 	Services []monitor.Service `json:"checks"`
 }
 
-// POST /api/register
+// POST /api/v1/register
 func RegisterAgentHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req RegisterRequest
@@ -58,7 +58,7 @@ func RegisterAgentHandler() http.HandlerFunc {
 	}
 }
 
-// GET /api/config
+// GET /api/v1/config
 func ConfigHandler(services []monitor.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		agentID := r.URL.Query().Get("agent_id")

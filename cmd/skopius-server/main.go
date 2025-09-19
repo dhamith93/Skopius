@@ -21,8 +21,9 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/register", api.RegisterAgentHandler())
-	mux.Handle("/api/config", api.ConfigHandler(cfg.Services))
+	mux.Handle("/api/v1/register", api.RegisterAgentHandler())
+	mux.Handle("/api/v1/config", api.ConfigHandler(cfg.Services))
+	mux.Handle("/api/v1/results", api.ResultHandler())
 
 	srv := &http.Server{
 		Addr:    ":" + port,

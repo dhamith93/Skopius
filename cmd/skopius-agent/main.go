@@ -9,8 +9,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/dhamith93/Skopius/internal/api"
+	"github.com/dhamith93/Skopius/internal/monitor"
 	"github.com/dhamith93/Skopius/internal/scheduler"
 )
 
@@ -46,7 +48,7 @@ func saveCredentials(creds *AgentCredentials) error {
 
 func registerAgent(hostname, region string) (*AgentCredentials, error) {
 	reqBody, _ := json.Marshal(api.RegisterRequest{Hostname: hostname, Region: region})
-	resp, err := http.Post(serverURL+"/api/register", "application/json", bytes.NewBuffer(reqBody))
+	resp, err := http.Post(serverURL+"/api/v1/register", "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +68,7 @@ func registerAgent(hostname, region string) (*AgentCredentials, error) {
 
 func fetchConfig(creds *AgentCredentials) (*api.ConfigResponse, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/config?agent_id=%s", serverURL, creds.AgentID), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/v1/config?agent_id=%s", serverURL, creds.AgentID), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -88,6 +90,39 @@ func fetchConfig(creds *AgentCredentials) (*api.ConfigResponse, error) {
 	}
 
 	return &cfg, nil
+}
+
+func sendResult(result monitor.CheckResult, creds AgentCredentials) error {
+	apiResult := api.CheckResult{
+		AgentID: creds.AgentID,
+		Service: result.Name,
+		URL:     result.URL,
+		Status:  result.Status,
+		Code:    result.Code,
+		Latency: result.Latency,
+		Error:   result.Error,
+		Time:    result.Timestamp,
+	}
+	payload, _ := json.Marshal(apiResult)
+
+	req, err := http.NewRequest("POST", serverURL+"/api/v1/results", bytes.NewBuffer(payload))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+creds.Token)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("server returned %s", resp.Status)
+	}
+	return nil
 }
 
 func main() {
@@ -119,9 +154,10 @@ func main() {
 
 	go func() {
 		for res := range scheduler.Results {
-			log.Printf("[%s] %s (code=%d, latency=%dms, err=%s)",
-				res.Name, res.Status, res.Code, res.Latency, res.Error)
-			// handle results
+			err := sendResult(res, *creds)
+			if err != nil {
+				log.Println("Error sending result:", err)
+			}
 		}
 	}()
 
