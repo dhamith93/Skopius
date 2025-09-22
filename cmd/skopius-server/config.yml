@@ -3,10 +3,16 @@ services:
     url: "https://www.google.com"
     interval: 10s
 
-  - name: dhamith.me
-    url: "https://dhamith.me"
+  - name: blog.dhamith.me
+    url: "https://blog.dhamith.me"
     interval: 15s
+    max_read: 3096
 
   - name: ShouldFail
     url: "https://thisurldoesnotexist.dev"
     interval: 5s
+
+  - name: youtube
+    url: "https://www.youtube.com"
+    interval: 20s
+    max_read: 10240000
