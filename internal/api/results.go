@@ -2,11 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/dhamith93/Skopius/internal/logger"
 	"github.com/dhamith93/Skopius/internal/models"
 	"github.com/dhamith93/Skopius/internal/store"
 )
@@ -30,10 +30,7 @@ func (a *API) ResultHandler() http.HandlerFunc {
 		}
 
 		res.Received = time.Now().UTC()
-
-		log.Printf("Received result: %+v", res)
-		log.Printf("[%s] %s (code=%d, latency=%dms, err=%s)",
-			res.Service, res.Status, res.Code, res.Latency, res.Error)
+		logger.LogResult(res)
 
 		if err := a.Store.SaveResult(res); err != nil {
 			http.Error(w, "failed to save result", http.StatusInternalServerError)

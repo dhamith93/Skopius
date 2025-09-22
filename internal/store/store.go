@@ -17,18 +17,22 @@ func NewStore(dsn string) (*Store, error) {
 		return nil, err
 	}
 
-	schema := `
-	CREATE TABLE IF NOT EXISTS results (
+	schema := `CREATE TABLE IF NOT EXISTS results (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		agent_id TEXT,
 		service TEXT,
 		url TEXT,
 		status TEXT,
 		code INTEGER,
-		latency INTEGER,
 		error TEXT,
-		timestamp TIMESTAMP,
-		received TIMESTAMP
+		dns INTEGER,
+		connect INTEGER,
+		tls INTEGER,
+		ttfb INTEGER,
+		server INTEGER,
+		total INTEGER,
+		timestamp DATETIME,
+		received DATETIME
 	);
 	`
 	if _, err := db.Exec(schema); err != nil {
@@ -53,16 +57,25 @@ func NewStore(dsn string) (*Store, error) {
 
 func (s *Store) SaveResult(res models.CheckResult) error {
 	_, err := s.DB.Exec(`
-        INSERT INTO results (agent_id, service, url, status, code, latency, error, timestamp, received)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		res.AgentID, res.Service, res.URL, res.Status,
-		res.Code, res.Latency, res.Error, res.Timestamp, res.Received)
+        INSERT INTO results (
+            agent_id, service, url, status, code, error,
+            dns, connect, tls, ttfb, server, total,
+            timestamp, received
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		res.AgentID, res.Service, res.URL, res.Status, res.Code, res.Error,
+		res.DNS, res.Connect, res.TLS, res.TTFB, res.Server, res.Total,
+		res.Timestamp, res.Received,
+	)
 	return err
 }
 
 func (s *Store) GetLatestResults(limit int) ([]models.CheckResult, error) {
 	rows, err := s.DB.Query(`
-        SELECT id, agent_id, service, url, status, code, latency, error, timestamp, received
+        SELECT 
+            id, agent_id, service, url, status, code, error,
+            dns, connect, tls, ttfb, server, total,
+            timestamp, received
         FROM results
         ORDER BY received DESC
         LIMIT ?`, limit)
@@ -74,8 +87,12 @@ func (s *Store) GetLatestResults(limit int) ([]models.CheckResult, error) {
 	var results []models.CheckResult
 	for rows.Next() {
 		var r models.CheckResult
-		if err := rows.Scan(&r.ID, &r.AgentID, &r.Service, &r.URL, &r.Status,
-			&r.Code, &r.Latency, &r.Error, &r.Timestamp, &r.Received); err != nil {
+		if err := rows.Scan(
+			&r.ID, &r.AgentID, &r.Service, &r.URL, &r.Status,
+			&r.Code, &r.Error,
+			&r.DNS, &r.Connect, &r.TLS, &r.TTFB, &r.Server, &r.Total,
+			&r.Timestamp, &r.Received,
+		); err != nil {
 			return nil, err
 		}
 		results = append(results, r)
