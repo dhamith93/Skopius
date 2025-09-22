@@ -11,6 +11,7 @@ import (
 
 	"github.com/dhamith93/Skopius/internal/api"
 	"github.com/dhamith93/Skopius/internal/config"
+	"github.com/dhamith93/Skopius/internal/store"
 )
 
 func main() {
@@ -18,6 +19,15 @@ func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
+	}
+
+	store, err := store.NewStore("skopius.db")
+	if err != nil {
+		log.Fatalf("failed to initialize store: %v", err)
+	}
+
+	api := &api.API{
+		Store: store,
 	}
 
 	mux := http.NewServeMux()

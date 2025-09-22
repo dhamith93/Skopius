@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dhamith93/Skopius/internal/database"
 	"github.com/dhamith93/Skopius/internal/monitor"
 	"github.com/google/uuid"
 )
@@ -35,7 +34,7 @@ type ConfigResponse struct {
 }
 
 // POST /api/v1/register
-func RegisterAgentHandler() http.HandlerFunc {
+func (a *API) RegisterAgentHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req RegisterRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -46,7 +45,7 @@ func RegisterAgentHandler() http.HandlerFunc {
 		agentID := uuid.New().String()
 		token := uuid.New().String()
 
-		err := database.RegisterAgent(agentID, req.Hostname, req.Region, token)
+		err := a.Store.RegisterAgent(agentID, req.Hostname, req.Region, token)
 		if err != nil {
 			http.Error(w, "failed to register agent", http.StatusInternalServerError)
 			return
@@ -59,7 +58,7 @@ func RegisterAgentHandler() http.HandlerFunc {
 }
 
 // GET /api/v1/config
-func ConfigHandler(services []monitor.Service) http.HandlerFunc {
+func (a *API) ConfigHandler(services []monitor.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		agentID := r.URL.Query().Get("agent_id")
 		token := r.Header.Get("Authorization")
@@ -74,7 +73,7 @@ func ConfigHandler(services []monitor.Service) http.HandlerFunc {
 			token = token[7:]
 		}
 
-		dbToken, err := database.GetAgentByID(agentID)
+		dbToken, err := a.Store.GetAgentByID(agentID)
 		if err != nil {
 			http.Error(w, "agent not found", http.StatusUnauthorized)
 			return
@@ -85,7 +84,7 @@ func ConfigHandler(services []monitor.Service) http.HandlerFunc {
 			return
 		}
 
-		database.UpdateLastSeen(agentID)
+		a.Store.UpdateLastSeen(agentID)
 
 		resp := ConfigResponse{
 			AgentID:  agentID,
